@@ -46,7 +46,7 @@ Automatisation avec crontab (Tous les jours à deux heures du matin) :
 
 ## Scripts :
 
-**``` backup.sh```**
+**```backup.sh```**
 ```
 #!/bin/bash
 
