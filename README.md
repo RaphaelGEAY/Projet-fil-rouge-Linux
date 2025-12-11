@@ -10,6 +10,8 @@ Ce projet vise à mettre en place une infrastructure réseau complète sur des m
 
 L'infrastructure est composée de 5 machines virtuelles (VMs) isolées en deux segments réseau distincts, reliés par un Routeur central.
 
+**Routeur (Debian, 10.10.10.2, 20.20.20.2)**
+
 Réseau 20.20.20.0 :
  - Client (Ubuntu, 20.20.20.20)
 
@@ -18,18 +20,16 @@ Réseau 10.10.10.0 :
  - Serveur Sauvegarde (Debian, 10.10.10.4)
  - Serveur Monitoring (Debian, 10.10.10.5)
 
-Routeur (Debian, 10.10.10.2, 20.20.20.2)
+## 🌐 Le site web (https://10.10.10.3)
 
-## 🌐 Le site web (http://10.10.10.3)
-
-Site web géré par apache2 et accessible via http://10.10.10.3
+Site web géré par apache2 et accessible via https://10.10.10.3
 
 ## 💾 Sauvegarde et Plan de Reprise d'Activité (PRA)
 
 La capacité de l'infrastructure à être restaurée en cas de défaillance majeure fonctionne comme ceci :
 
 backup-web.sh :
- - Script qui sauvegarde tout le site + toute la config de apache2 de la VM Serveur Web
+ - Script qui sauvegarde tout le site + toute la config de apache2 sur la VM Serveur Web (utilisation de rsync)
 
 restauration-web.sh :
  - Script qui remet tous les fichiers de la dernière sauvegarde en place
