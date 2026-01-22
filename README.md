@@ -75,13 +75,13 @@ iface enp0s9 inet static
     dns-nameservers 127.0.0.1
 ```
 
-```
-sudo systemctl restart networking
-```
-
 **Configuration DNS pour les machines Debian (ex: Routeur) (`/etc/resolv.conf`)
 ```
 nameserver 127.0.0.1
+```
+
+```
+sudo systemctl restart networking
 ```
 
 ## 📡 DNS
