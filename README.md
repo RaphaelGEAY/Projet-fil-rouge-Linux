@@ -44,7 +44,7 @@ network:
 sudo netplan apply
 ```
 
-**Configuration réseau pour le Routeur (`/etc/network/interfaces`)
+**Configuration réseau pour les machines Debian (ex: Routeur) (`/etc/network/interfaces`)
 ```
 # This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
@@ -77,6 +77,11 @@ iface enp0s9 inet static
 
 ```
 sudo systemctl restart networking
+```
+
+**Configuration DNS pour les machines Debian (ex: Routeur) (`/etc/resolv.conf`)
+```
+nameserver 127.0.0.1
 ```
 
 ## 📡 DNS
