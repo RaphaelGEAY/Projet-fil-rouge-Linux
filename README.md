@@ -8,9 +8,11 @@ Ce projet vise à mettre en place une infrastructure réseau complète sur des m
 
 ## 🗺️ Topologie Réseau et Segmentation
 
-L'infrastructure est composée de 5 machines virtuelles (VMs) isolées en deux segments réseau distincts, reliés par un Routeur central.
+L'infrastructure est composée de 5 machines virtuelles, réparties sur deux réseaux distincts, reliés par un Routeur central.
 
-**Routeur (Debian, 10.10.10.2, 20.20.20.2)**
+Le Routeur est la seule machine à posséder une carte NAT, donc toutes les autres machines doivent passer par le Routeur pour accéder à internet.
+
+**Routeur (Debian, NAT, 10.10.10.2, 20.20.20.2)**
 
 Réseau 20.20.20.0 :
  - Client (Ubuntu, 20.20.20.20)
@@ -20,9 +22,92 @@ Réseau 10.10.10.0 :
  - Serveur Sauvegarde (Debian, 10.10.10.4)
  - Serveur Monitoring (Debian, 10.10.10.5)
 
-## 🌐 Le site web (https://10.10.10.3)
+**Configuration réseau pour le Client (`/etc/netplan/01-network-manager-all.yaml`)
+```
+# Let NetworkManager manage all devices on this system
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp0s8:
+      dhcp4: no
+      addresses:
+        - 20.20.20.20/24
+      routes:
+        - to: default
+          via: 20.20.20.2
+      nameservers:
+        addresses: [20.20.20.2]
+```
 
-Site web géré par apache2 et accessible via https://10.10.10.3
+```
+sudo netplan apply
+```
+
+**Configuration réseau pour le Routeur (`/etc/network/interfaces`)
+```
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+auto enp0s3
+iface enp0s3 inet dhcp
+
+auto enp0s8
+iface enp0s8 inet static
+    address 10.10.10.2
+    netmask 255.255.255.0
+    network 10.10.10.0
+    broadcast 10.10.10.255
+    dns-nameservers 127.0.0.1
+
+auto enp0s9
+iface enp0s9 inet static
+    address 20.20.20.2
+    netmask 255.255.255.0
+    network 20.20.20.0
+    broadcast 20.20.20.255
+    dns-nameservers 127.0.0.1
+```
+
+```
+sudo systemctl restart networking
+```
+
+## 📡 DNS
+
+Le DNS se fait sur le Routeur (10.10.10.2, 20.20.20.2)
+
+Le service **Bind9** gère la zone `monsupersite.com`.
+
+**Fichier de zone (`/etc/bind/db.monsupersite.com`) :**
+Ce fichier fait la correspondance entre les noms de machines et leurs IPs respectives.
+```
+@       IN      SOA     ns.monsupersite.com. root.monsupersite.com. (
+                              2026012201 ; Serial
+                              604800     ; Refresh
+                              86400      ; Retry
+                              2419200    ; Expire
+                              604800 )   ; Negative Cache TTL
+;
+@       IN      NS      ns.monsupersite.com.
+@       IN      A       10.10.10.3       ; Domaine racine -> Web
+www     IN      A       10.10.10.3       ; www -> Web
+
+ns      IN      A       10.10.10.2       ; Serveur de noms
+web     IN      A       10.10.10.3
+backup  IN      A       10.10.10.4
+client  IN      A       20.20.20.20
+```
+
+## 🌐 Le site web (https://monsupersite)
+
+Site web géré par apache2 et accessible via https://monsupersite
 
 ## 💾 Sauvegarde et Plan de Reprise d'Activité (PRA)
 
