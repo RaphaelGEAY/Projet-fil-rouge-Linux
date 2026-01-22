@@ -22,7 +22,7 @@ Réseau 10.10.10.0 :
  - Serveur Sauvegarde (Debian, 10.10.10.4)
  - Serveur Monitoring (Debian, 10.10.10.5)
 
-**Configuration réseau pour le Client (`/etc/netplan/01-network-manager-all.yaml`)
+**Configuration réseau pour le Client (`/etc/netplan/01-network-manager-all.yaml`)**
 ```
 # Let NetworkManager manage all devices on this system
 network:
@@ -40,11 +40,12 @@ network:
         addresses: [20.20.20.2]
 ```
 
+**Appliquer**
 ```
 sudo netplan apply
 ```
 
-**Configuration réseau pour les machines Debian (ex: Routeur) (`/etc/network/interfaces`)
+**Configuration réseau pour les machines Debian (ex: Routeur) (`/etc/network/interfaces`)**
 ```
 # This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
@@ -75,11 +76,12 @@ iface enp0s9 inet static
     dns-nameservers 127.0.0.1
 ```
 
-**Configuration DNS pour les machines Debian (ex: Routeur) (`/etc/resolv.conf`)
+**Configuration DNS pour les machines Debian (ex: Routeur) (`/etc/resolv.conf`)**
 ```
 nameserver 127.0.0.1
 ```
 
+**Appliquer**
 ```
 sudo systemctl restart networking
 ```
