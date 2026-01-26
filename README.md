@@ -374,6 +374,12 @@ networks:
 volumes:
   db_data:
 ```
+```
+sudo docker compose down
+```
+```
+sudo docker compose up -d
+```
 
 ## 💾 Sauvegarde et Plan de Reprise d'Activité (PRA)
 
