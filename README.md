@@ -364,11 +364,11 @@ volumes:
 
 La capacité de l'infrastructure à être restaurée en cas de défaillance majeure fonctionne comme ceci :
 
-backup-web.sh :
+backup.sh :
  - Script qui sauvegarde l'intégralité du répertoire du site sur la VM Serveur Sauvegarde (Code source, Base de données, Certificats SSL et Docker Compose)
  - Utilisation de rsync + clé SSH
 
-restauration-web.sh :
+restauration.sh :
  - Script qui remet tous les fichiers de la dernière sauvegarde en place
  - Utilisation de rsync + clé SSH
 
