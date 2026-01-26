@@ -22,6 +22,17 @@ Réseau 10.10.10.0 :
  - Serveur Sauvegarde (Debian, 10.10.10.4)
  - Serveur Monitoring (Debian, 10.10.10.5)
 
+**Configuration du routeur**
+```
+net.ipv4.ip_forward = 1 # Dans le fichier /etc/sysctl.conf
+```
+```
+sudo sysctl -p
+```
+```
+sudo iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
+```
+
 **Configuration réseau pour le Client (`/etc/netplan/01-network-manager-all.yaml`)**
 ```
 # Let NetworkManager manage all devices on this system
@@ -118,116 +129,367 @@ client  IN      A       20.20.20.20
 www     IN      CNAME   web.monsupersite.com.
 ```
 
-## 🌐 Le site web (https://monsupersite)
+🌐 Site Web & Base de Données
 
-Site web géré par apache2 et accessible via https://monsupersite
+Le site est un coffre-fort numérique sécurisé déployé la machine Serveur Web (10.10.10.3)
+
+ - Disponible sur tout le réseau via l'URL personnalisée https://monsupersite.com
+ - Chiffrement des flux via SSL/TLS (Port 443) avec certificats dédiés
+ - Utilisation de Docker Compose pour la conteneurisation
+ - Utilisation de MariaDB pour la base de donnée
+
+**`~/MonSuperSite/html/index.php`**
+```
+<?php
+// --- CONFIGURATION DATABASE ---
+$host = 'mariadb_site';
+$db   = 'monsupersite';
+$user = 'root';
+$pass = 'SecuVault_2026';
+
+// Connexion à la base
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (Exception $e) {
+    die('<div style="color:red; text-align:center; padding:20px; background:black; border:2px solid red;">
+            [ERREUR SYSTEME] : Connexion au Coffre-fort échouée.
+         </div>');
+}
+
+// --- LOGIQUE PRG (Post-Redirect-Get) ---
+// Évite le message "Renvoyer le formulaire" sur Firefox
+if (!empty($_POST['codename']) && !empty($_POST['secret'])) {
+    $stmt = $pdo->prepare("INSERT INTO vault (codename, secret, date_stored) VALUES (?, ?, NOW())");
+    $stmt->execute([$_POST['codename'], $_POST['secret']]);
+    
+    // Redirection immédiate pour vider le cache d'envoi
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit(); 
+}
+
+// Récupération des secrets
+$secrets = $pdo->query("SELECT * FROM vault ORDER BY date_stored DESC LIMIT 5")->fetchAll();
+?>
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SECURE VAULT | STORAGE</title>
+    
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <style>
+        body {
+            /* Fond sombre tech */
+            background-color: #050505;
+            background-image: 
+                linear-gradient(rgba(255, 0, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #ff3333; /* Rouge "Alerte" */
+            font-family: 'Courier New', Courier, monospace; /* Police style terminal */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .vault-panel {
+            background: rgba(10, 0, 0, 0.9);
+            border: 2px solid #ff3333;
+            border-radius: 5px;
+            padding: 40px;
+            width: 600px;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
+            position: relative;
+        }
+        /* Effet "TOP SECRET" en haut */
+        .vault-panel::before {
+            content: "TOP SECRET // CLASSIFIED";
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: #050505;
+            padding: 0 10px;
+            color: #ff3333;
+            font-weight: bold;
+            border: 1px solid #ff3333;
+        }
+
+        h1 { 
+            text-align: center;
+            border-bottom: 1px dashed #ff3333; 
+            padding-bottom: 20px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px #ff3333;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            background: #1a0000;
+            border: 1px solid #550000;
+            color: #ff8888;
+            padding: 15px;
+            width: 100%;
+            font-family: 'Courier New', monospace;
+            outline: none;
+            transition: 0.3s;
+        }
+        input[type="text"]:focus {
+            border-color: #ff3333;
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #330000;
+            color: #ff3333;
+            border: 1px solid #ff3333;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        button:hover {
+            background: #ff3333;
+            color: black;
+            box-shadow: 0 0 20px #ff3333;
+        }
+
+        .data-list {
+            margin-top: 30px;
+            border-top: 1px solid #330000;
+            padding-top: 10px;
+        }
+        .secret-row {
+            padding: 10px;
+            border-bottom: 1px dotted #550000;
+            display: flex;
+            justify-content: space-between;
+        }
+        .secret-row:hover { background: rgba(255, 0, 0, 0.1); }
+        .codename { font-weight: bold; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div class="vault-panel">
+        <h1>STOCKAGE SÉCURISÉ</h1>
+        
+        <form method="POST">
+            <div class="input-group">
+                <input type="text" name="codename" placeholder="NOM DE CODE (ex: PROJET X)" required style="flex: 1;">
+                <input type="text" name="secret" placeholder="DONNÉE SENSIBLE (ex: MDP ROOT)" required style="flex: 2;">
+            </div>
+            <button type="submit">🔒 CHIFFRER ET ARCHIVER</button>
+        </form>
+
+        <div class="data-list">
+            <div style="margin-bottom: 10px; color: #555;">DERNIÈRES ENTRÉES DANS LE COFFRE :</div>
+            <?php foreach($secrets as $entry): ?>
+                <div class="secret-row">
+                    <span class="codename">> <?= htmlspecialchars($entry['codename']) ?></span>
+                    <span><?= htmlspecialchars($entry['secret']) ?></span>
+                    <span style="font-size: 0.8em; color: #888;">[<?= $entry['date_stored'] ?>]</span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+</body>
+</html>
+```
+
+**`~/MonSuperSite/docker-compose.yml`**
+```
+services:
+  # --- SERVEUR WEB (Apache + PHP + SSL) ---
+  web-server:
+    image: php:8.2-apache
+    container_name: site_web
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./html:/var/www/html
+      - ./ssl/server.crt:/etc/apache2/ssl/server.crt
+      - ./ssl/server.key:/etc/apache2/ssl/server.key
+      - /etc/localtime:/etc/localtime:ro
+    command: >
+      sh -c "a2enmod ssl && a2enmod rewrite &&
+             a2ensite default-ssl &&
+             sed -i 's|SSLCertificateFile.*|SSLCertificateFile /etc/apache2/ssl/server.crt|g' /etc/apache2/sites-available/default-ssl.conf &&
+             sed -i 's|SSLCertificateKeyFile.*|SSLCertificateKeyFile /etc/apache2/ssl/server.key|g' /etc/apache2/sites-available/default-ssl.conf &&
+             docker-php-ext-install pdo pdo_mysql &&
+             apache2-foreground"
+    networks:
+      - secure-net
+    depends_on:
+      - database
+
+  # --- BASE DE DONNÉES (MariaDB) ---
+  database:
+    image: mariadb:latest
+    container_name: mariadb_site
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: SecuVault_2026
+      MYSQL_DATABASE: monsupersite
+    volumes:
+      - db_data:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - secure-net
+
+networks:
+  secure-net:
+    driver: bridge
+
+volumes:
+  db_data:
+```
 
 ## 💾 Sauvegarde et Plan de Reprise d'Activité (PRA)
 
 La capacité de l'infrastructure à être restaurée en cas de défaillance majeure fonctionne comme ceci :
 
 backup-web.sh :
- - Script qui sauvegarde tout le site + toute la config de apache2 sur la VM Serveur Sauvegarde
+ - Script qui sauvegarde l'intégralité du répertoire du site sur la VM Serveur Sauvegarde (Code source, Base de données, Certificats SSL et Docker Compose)
  - Utilisation de rsync + clé SSH
 
 restauration-web.sh :
  - Script qui remet tous les fichiers de la dernière sauvegarde en place
  - Utilisation de rsync + clé SSH
 
-backup-web.log et restauration-web.log :
- - Fichiers de log qui stocke tous les évènements de l'éxecution de backup-web.sh et de restauration-web.sh
+backup.log et restauration.log :
+ - Fichiers de log qui stocke tous les évènements de l'éxecution de backup.sh et de restauration.sh
 
 Automatisation avec crontab (Tous les jours à deux heures du matin) :
 ```
-0 2 * * * /home/user/Documents/backup-web.sh
+0 2 * * * /home/user/Scripts/backup.sh
+```
+```
+crontab -e # Modifier cron
+```
+```
+crontab -l # Lister cron
 ```
 
 ## Scripts :
 
-**```backup.sh```**
+**`~/Scripts/backup.sh`**
 ```
 #!/bin/bash
 
-LOG="$HOME/Documents/backup-web.log"
+LOG="$HOME/Scripts/Logs/backup.log"
 
-# Serveur de destination
+# --- Configuration ---
+SOURCE_DIR="$HOME/MonSuperSite"
+DB_CONTAINER="mariadb_site"
+DB_NAME="monsupersite"
+DB_ROOT_PASS="SecuVault_2026"
+
+# Serveur de destination (Serveur Sauvegarde)
 DEST_USER="user"
-DEST_HOST="10.10.10.4"  # Assurez-vous que c'est bien l'IP du Serveur Sauvegarde !
-DEST_BASE="/home/user/Documents/backup/web"
-DEST_HTML="$DEST_BASE/html"
-DEST_APACHE="$DEST_BASE/apache2"
+DEST_HOST="10.10.10.4"
+DEST_BASE="/home/user/Sauvegardes"
 
 # --- Début du processus ---
-echo "=== Début backup $(date) ===" | tee -a "$LOG"
-echo "Tentative de connexion à $DEST_HOST et création des répertoires..."
+echo "=== Début backup Docker $(date) ===" | tee -a "$LOG"
 
-# Création des dossiers sur le serveur distant
-# On affiche la commande ssh dans le terminal pour l'effet "stylé"
-if ssh $DEST_USER@$DEST_HOST "mkdir -p $DEST_HTML $DEST_APACHE"; then
-    echo "Répertoires distants créés ou déjà existants." | tee -a "$LOG"
+# 1. Sauvegarde de la Base de Données (Dump à chaud)
+echo "--- Export de la base de données MariaDB ---" | tee -a "$LOG"
+# On demande au conteneur de créer un fichier SQL dans le dossier du projet
+if docker exec $DB_CONTAINER mariadb-dump -u root -p"$DB_ROOT_PASS" $DB_NAME > "$SOURCE_DIR/database.sql"; then
+    echo "Dump SQL réussi." | tee -a "$LOG"
 else
-    echo "Erreur lors de la création des répertoires distants. Vérifiez SSH et les permissions." | tee -a "$LOG"
+    echo "ERREUR : Échec du dump SQL. Le conteneur est-il allumé ?" | tee -a "$LOG"
+    exit 1
 fi
 
-echo "--- Démarrage de la sauvegarde du site web (/var/www/html) ---" | tee -a "$LOG"
-# Sauvegarde du site web - Utilisation de tee pour afficher et loguer
-rsync -avz /var/www/html/ $DEST_USER@$DEST_HOST:$DEST_HTML/ 2>&1 | tee -a "$LOG"
+# 2. Préparation du serveur distant
+echo "Tentative de connexion à $DEST_HOST..." | tee -a "$LOG"
+ssh $DEST_USER@$DEST_HOST "mkdir -p $DEST_BASE"
 
-echo "--- Démarrage de la sauvegarde de la configuration Apache (/etc/apache2) ---" | tee -a "$LOG"
-# Sauvegarde de la configuration Apache - Utilisation de tee pour afficher et loguer
-rsync -avz /etc/apache2/ $DEST_USER@$DEST_HOST:$DEST_APACHE/ 2>&1 | tee -a "$LOG"
+# 3. Sauvegarde de TOUT le dossier projet (HTML, Config, Docker-compose et SQL)
+echo "--- Synchronisation des fichiers vers le serveur de sauvegarde ---" | tee -a "$LOG"
+# On envoie tout le dossier Conteneurisation vers le serveur de backup
+rsync -avz --no-perms --no-owner --no-group --delete "$SOURCE_DIR/" $DEST_USER@$DEST_HOST:$DEST_BASE/ 2>&1 | tee -a "$LOG"
 
 echo "=== Fin backup $(date) ===" | tee -a "$LOG"
 ```
 
-**```restauration.sh```**
+**`~/Scripts/restauration.sh`**
 ```
 #!/bin/bash
 
-# --- Configuration (à adapter au chemin où vous exécutez le script) ---
-LOG="/home/user/Documents/restauration-web.log" # Nouveau fichier log pour la restauration
+LOG="$HOME/Scripts/Logs/restauration.log"
+
+# --- Configuration ---
+PROJECT_DIR="$HOME/MonSuperSite"
+DB_CONTAINER="mariadb_site"
+DB_NAME="monsupersite"
+DB_ROOT_PASS="SecuVault_2026"
+
+# Serveur Source (Serveur Sauvegarde)
 SOURCE_USER="user"
-SOURCE_HOST="10.10.10.4" # Serveur de Sauvegarde
-SOURCE_BASE="/home/user/Documents/backup/web"
-SOURCE_HTML="$SOURCE_BASE/html"
-SOURCE_APACHE="$SOURCE_BASE/apache2"
+SOURCE_HOST="10.10.10.4"
+SOURCE_PATH="/home/user/Sauvegardes"
 
-# --- Vérification et Nettoyage (optionnel mais conseillé pour la restauration) ---
-echo "=== Début de la restauration $(date) ===" | tee -a "$LOG"
-echo "Vérification des accès SSH sans mot de passe vers le Serveur Sauvegarde ($SOURCE_HOST)..." | tee -a "$LOG"
+echo "=== Début de la restauration Docker $(date) ===" | tee -a "$LOG"
 
-if ! ssh -q $SOURCE_USER@$SOURCE_HOST exit; then
-    echo "ERREUR CRITIQUE : La connexion SSH sans mot de passe au Serveur Sauvegarde a échoué." | tee -a "$LOG"
-    echo "Veuillez vérifier les clés SSH et la connectivité." | tee -a "$LOG"
+# 1. Arrêt des conteneurs (pour éviter les conflits d'écriture)
+echo "--- Arrêt des services Docker ---" | tee -a "$LOG"
+cd "$PROJECT_DIR" || exit
+docker compose down | tee -a "$LOG"
+
+# 2. Récupération des fichiers depuis le serveur de sauvegarde
+echo "--- Récupération des fichiers depuis la sauvegarde ---" | tee -a "$LOG"
+# On écrase le dossier local par celui de la sauvegarde
+if rsync -avz --no-perms --no-owner --no-group --delete $SOURCE_USER@$SOURCE_HOST:$SOURCE_PATH/ "$PROJECT_DIR/" 2>&1 | tee -a "$LOG"; then
+    echo "Fichiers restaurés avec succès." | tee -a "$LOG"
+else
+    echo "ERREUR CRITIQUE lors du rsync." | tee -a "$LOG"
     exit 1
 fi
 
-# --- Restauration du site web ---
-echo "--- Démarrage de la restauration du site web vers /var/www/html/ ---" | tee -a "$LOG"
-# Utilisation de 'sudo' car /var/www/html/ nécessite généralement des droits root pour écrire
-# Attention : rsync inversé (Source distante -> Destination locale)
-if sudo rsync -avz $SOURCE_USER@$SOURCE_HOST:$SOURCE_HTML/ /var/www/html/ 2>&1 | tee -a "$LOG"; then
-    echo "Restauration du site web : OK" | tee -a "$LOG"
+# 3. Redémarrage des conteneurs
+echo "--- Redémarrage de l'infrastructure ---" | tee -a "$LOG"
+docker compose up -d | tee -a "$LOG"
+
+# 4. Attente et Importation de la base de données
+echo "Attente du démarrage de la base de données (15s)..." | tee -a "$LOG"
+sleep 15 # On laisse le temps à MariaDB de s'initialiser
+
+if [ -f "$PROJECT_DIR/database.sql" ]; then
+    echo "--- Restauration des données SQL dans le conteneur ---" | tee -a "$LOG"
+    # On injecte le fichier SQL à l'intérieur du conteneur
+    cat "$PROJECT_DIR/database.sql" | docker exec -i $DB_CONTAINER mariadb -u root -p"$DB_ROOT_PASS" $DB_NAME
+    
+    if [ $? -eq 0 ]; then
+        echo "Base de données restaurée : OK" | tee -a "$LOG"
+    else
+        echo "Erreur lors de l'import SQL." | tee -a "$LOG"
+    fi
 else
-    echo "Restauration du site web : ÉCHEC. Voir le log pour les détails." | tee -a "$LOG"
+    echo "Aucun fichier SQL trouvé pour la restauration." | tee -a "$LOG"
 fi
 
-# --- Restauration de la configuration Apache ---
-echo "--- Démarrage de la restauration de la configuration Apache vers /etc/apache2/ ---" | tee -a "$LOG"
-# Utilisation de 'sudo' car /etc/apache2/ nécessite des droits root pour écrire
-if sudo rsync -avz $SOURCE_USER@$SOURCE_HOST:$SOURCE_APACHE/ /etc/apache2/ 2>&1 | tee -a "$LOG"; then
-    echo "Restauration de la configuration Apache : OK" | tee -a "$LOG"
-else
-    echo "Restauration de la configuration Apache : ÉCHEC. Voir le log pour les détails." | tee -a "$LOG"
-fi
+echo "=== Fin de la restauration $(date). Vérifiez le site. ===" | tee -a "$LOG"
+```
 
-# --- Finalisation et redémarrage du service ---
-echo "--- Redémarrage du service Apache2 pour appliquer les nouvelles configurations ---" | tee -a "$LOG"
-if sudo systemctl restart apache2 2>&1 | tee -a "$LOG"; then
-    echo "Service Apache2 redémarré avec succès !" | tee -a "$LOG"
-else
-    echo "ÉCHEC du redémarrage d'Apache2. Vérifiez la syntaxe des fichiers restaurés." | tee -a "$LOG"
-fi
-
-echo "=== Fin de la restauration $(date). Veuillez vérifier l'accessibilité du site. ===" | tee -a "$LOG"
+**`~/Scripts/vider.sh`** (vide la base de données)
+```
+docker exec -it mariadb_site mariadb -u root -p"SecuVault_2026" -e "TRUNCATE TABLE monsupersite.vault;"
 ```
