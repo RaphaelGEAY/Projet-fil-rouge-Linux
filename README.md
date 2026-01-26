@@ -99,7 +99,7 @@ sudo systemctl restart networking
 
 ## 📡 DNS
 
-Le DNS se fait sur le Routeur (10.10.10.2, 20.20.20.2)
+Le DNS se fait sur le Routeur (10.10.10.2, 20.20.20.2).
 
 Le service **Bind9** gère la zone `monsupersite.com`.
 
@@ -131,7 +131,7 @@ www     IN      CNAME   web.monsupersite.com.
 
 ## 🌐 Site Web & Base de Données
 
-Le site est un coffre-fort numérique sécurisé déployé la machine Serveur Web (10.10.10.3)
+Le site est un coffre-fort numérique sécurisé déployé la machine Serveur Web (10.10.10.3).
 
  - Disponible sur tout le réseau via l'URL personnalisée https://monsupersite.com
  - Chiffrement des flux via SSL/TLS (Port 443) avec certificats dédiés
@@ -352,6 +352,21 @@ services:
     networks:
       - secure-net
 
+  # --- AGENT DE MONITORING (Nouveau) ---
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - secure-net
+
 networks:
   secure-net:
     driver: bridge
@@ -492,4 +507,43 @@ echo "=== Fin de la restauration $(date). Vérifiez le site. ===" | tee -a "$LOG
 **`~/Scripts/vider.sh`** (vide la base de données)
 ```
 docker exec -it mariadb_site mariadb -u root -p"SecuVault_2026" -e "TRUNCATE TABLE monsupersite.vault;"
+```
+
+## 📊 Monitoring
+Pour assurer la haute disponibilité du coffre-fort, une stack de monitoring complète a été mise en place sur une machine dédiée (10.10.10.5).
+Elle permet de surveiller l'état de santé de l'infrastructure en temps réel.
+
+ - Prometheus : Récupère et stocke les métriques de performance toutes les 15 secondes
+ - Grafana : Interface de visualisation (Dashboard) qui permet de traduire les données brutes en graphiques
+ - cAdvisor (sur Serveur Web) : Agent conteneurisé qui analyse la consommation de ressources (CPU, RAM, Réseau) spécifiquement pour les conteneurs Docker site_web et mariadb_site
+
+**`~/Monitoring/docker-compose.yml`**
+```
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+```
+
+**`~/Monitoring/prometheus.yml`**
+```
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'serveur-web'
+    static_configs:
+      - targets: ['10.10.10.3:8080']
 ```
