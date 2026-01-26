@@ -133,7 +133,7 @@ www     IN      CNAME   web.monsupersite.com.
 
 Le site est un coffre-fort numérique sécurisé déployé la machine Serveur Web (10.10.10.3).
 
- - Disponible sur tout le réseau via l'URL personnalisée https://monsupersite.com
+ - Disponible depuis toutes les machines via l'URL https://monsupersite.com
  - Chiffrement des flux via SSL/TLS (Port 443) avec certificats dédiés
  - Utilisation de Docker Compose pour la conteneurisation
  - Utilisation de MariaDB pour la base de donnée
@@ -511,7 +511,7 @@ docker exec -it mariadb_site mariadb -u root -p"SecuVault_2026" -e "TRUNCATE TAB
 
 ## 📊 Monitoring
 
-Accès au monitoring via http://10.10.10.5:3000.
+Accès au monitoring via http://10.10.10.5:3000 depuis n'importe quelle machine.
 Pour assurer la haute disponibilité du coffre-fort, une stack de monitoring complète a été mise en place sur une machine dédiée (10.10.10.5).
 Elle permet de surveiller l'état de santé de l'infrastructure en temps réel.
 
