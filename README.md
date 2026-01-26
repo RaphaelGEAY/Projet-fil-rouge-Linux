@@ -95,21 +95,27 @@ Le service **Bind9** gère la zone `monsupersite.com`.
 **Fichier de zone (`/etc/bind/db.monsupersite.com`) :**
 Ce fichier fait la correspondance entre les noms de machines et leurs IPs respectives.
 ```
+$TTL 604800
 @       IN      SOA     ns.monsupersite.com. root.monsupersite.com. (
-                              2026012201 ; Serial
+                              2026012601 ; Serial (Date du jour + version 01)
                               604800     ; Refresh
                               86400      ; Retry
                               2419200    ; Expire
                               604800 )   ; Negative Cache TTL
-;
-@       IN      NS      ns.monsupersite.com.
-@       IN      A       10.10.10.3       ; Domaine racine -> Web
-www     IN      A       10.10.10.3       ; www -> Web
 
-ns      IN      A       10.10.10.2       ; Serveur de noms
+; --- SERVEURS DE NOMS ---
+@       IN      NS      ns.monsupersite.com.
+ns      IN      A       10.10.10.2
+
+; --- ENREGISTREMENTS A (LES MACHINES PHYSIQUES/VM) ---
 web     IN      A       10.10.10.3
 backup  IN      A       10.10.10.4
+monitor IN      A       10.10.10.5
 client  IN      A       20.20.20.20
+
+; --- ALIAS (POUR LE WEB) ---
+@       IN      A       10.10.10.3
+www     IN      CNAME   web.monsupersite.com.
 ```
 
 ## 🌐 Le site web (https://monsupersite)
