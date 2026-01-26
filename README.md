@@ -129,7 +129,7 @@ client  IN      A       20.20.20.20
 www     IN      CNAME   web.monsupersite.com.
 ```
 
-🌐 Site Web & Base de Données
+## 🌐 Site Web & Base de Données
 
 Le site est un coffre-fort numérique sécurisé déployé la machine Serveur Web (10.10.10.3)
 
