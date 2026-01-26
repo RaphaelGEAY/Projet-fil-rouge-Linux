@@ -510,6 +510,8 @@ docker exec -it mariadb_site mariadb -u root -p"SecuVault_2026" -e "TRUNCATE TAB
 ```
 
 ## 📊 Monitoring
+
+Accès au monitoring via http://10.10.10.5:3000.
 Pour assurer la haute disponibilité du coffre-fort, une stack de monitoring complète a été mise en place sur une machine dédiée (10.10.10.5).
 Elle permet de surveiller l'état de santé de l'infrastructure en temps réel.
 
